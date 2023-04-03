@@ -1,0 +1,49 @@
+[[all]]
+opcode = "add"
+dst = "Register"
+src1 = "Constant"
+src2 = "Register"
+translation = '''
+imm {1} {b}
+add {a} {1} {c}
+'''
+
+[[all]]
+opcode = "add"
+dst = "Register"
+src1 = "Register"
+src2 = "Constant"
+translation = '''
+imm {1} {c}
+add {a} {b} {1}
+'''
+
+[[all]]
+opcode = "add"
+dst = "Register"
+src1 = "Constant"
+src2 = "Constant"
+translation = '''
+imm {1} {b}
+imm {2} {c}
+add {a} {1} {2}
+'''
+
+[[all]]
+opcode = "jmp"
+dst = "Constant"
+src1 = "None"
+src2 = "None"
+translation = '''
+bge {a} R0 R0
+'''
+
+[[all]]
+opcode = "bge"
+dst = "Constant"
+src1 = "Register"
+src2 = "Register"
+translation = '''
+imm {1} {a}
+bge {1} {b} {c}
+'''
