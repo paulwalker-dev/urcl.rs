@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use serde::Deserialize;
