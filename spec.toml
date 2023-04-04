@@ -321,3 +321,93 @@ src2 = "None"
 translation = '''
 add {a} {b} {b}
 '''
+
+# INC
+[[all]]
+opcode = "inc"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+add {a} {b} 1
+'''
+
+# DEC
+[[all]]
+opcode = "dec"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+not {1} R0
+add {a} {b} {1}
+'''
+
+# NEG
+[[all]]
+opcode = "neg"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+not {a} {b}
+inc {a} {a}
+'''
+
+# AND
+[[all]]
+opcode = "and"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+not {1} {b}
+not {2} {c}
+nor {a} {1} {2}
+'''
+
+# OR
+[[all]]
+opcode = "or"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+nor {a} {b} {c}
+not {a} {a}
+'''
+
+# NOT
+[[all]]
+opcode = "not"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+nor {a} {b} R0
+'''
+
+# XNOR
+[[all]]
+opcode = "xnor"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+and {a} {b} {c}
+nor {1} {b} {c}
+nor {a} {a} {1}
+not {a} {a}
+'''
+
+# XOR
+[[all]]
+opcode = "xor"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+and {a} {b} {c}
+nor {1} {b} {c}
+nor {a} {a} {1}
+'''

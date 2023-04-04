@@ -4,4 +4,5 @@ imm R2 1
 .loop
     add R1 R1 R2
     add R2 R1 R2
+    sub R3 R1 R2
     jmp .loop
