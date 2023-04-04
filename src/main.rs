@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 static BITS: u32 = 8;
 static BASE: usize = 2;
-static MAX_REG: usize = BASE.pow(BITS) - 1;
+static MAX_REG: usize = BASE.pow(BITS) - 2;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -366,7 +366,7 @@ fn transpile(s: String) -> Result<String> {
     }
 
     if !(&lines).into_iter().fold(true, |prev, (line, _)| {
-        prev && match spec.check_core(line) {
+        (match spec.check_core(line) {
             true => true,
             false => {
                 // FIXME: This can crash
@@ -374,7 +374,7 @@ fn transpile(s: String) -> Result<String> {
 
                 false
             }
-        }
+        }) && prev
     }) {
         println!("WARNING: Transpiled contains non-core instructions")
     }

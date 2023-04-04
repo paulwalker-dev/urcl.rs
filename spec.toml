@@ -638,3 +638,23 @@ translation = '''
 lod {1} {b}
 str {a} {1}
 '''
+
+## Complex
+
+# DIV
+[[all]]
+opcode = "div"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+brl ~+13 {b} {c}
+mov {1} {b}
+mov {2} {c}
+mov {a} R0
+inc {a} {a}
+sub {1} {1} {2}
+bge ~-2 {1} {2}
+jmp ~+2
+mov {a} R0
+'''
