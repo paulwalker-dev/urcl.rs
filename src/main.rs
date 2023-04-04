@@ -15,7 +15,7 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    Compile {
+    Transpile {
         source: PathBuf,
 
         #[arg(short, long)]
@@ -35,6 +35,7 @@ enum Operand {
     None,
     Register(usize),
     Memory(usize),
+    PC, // TODO: Find better way to implement PC as dst
 
     // Static Values
     Constant(usize),
@@ -60,6 +61,10 @@ impl Operand {
                         .ok_or(anyhow!("Unable to determine memory address: {}", s))?
                         .parse::<usize>()?,
                 ),
+                'P' => match s.chars().nth(1).ok_or(anyhow!("Unknown if PC: {}", s))? {
+                    'C' => Self::PC,
+                    _ => Err(anyhow!("Prefix P not understood: {}", s))?,
+                },
                 '0' => match s.chars().nth(1) {
                     Some(c) => match c {
                         'b' => Self::Constant(usize::from_str_radix(
@@ -106,6 +111,7 @@ impl Operand {
             Self::Memory(a) => format!("M{}", a),
             Self::Register(a) => format!("R{}", a),
             Self::Relative(a) => format!("~{}{}", if a > &0 { '+' } else { '-' }, a.abs()),
+            Self::PC => "PC".to_string(),
             Self::None => String::new(),
         })
     }
@@ -207,6 +213,8 @@ enum SpecOperand {
     Constant,
     Register,
     Memory,
+    PC,
+    Any,
     None,
 }
 
@@ -221,82 +229,56 @@ struct Spec {
 
 #[derive(Debug, Deserialize)]
 struct SpecFile {
+    core: Vec<Spec>,
     all: Vec<Spec>,
 }
 
 impl SpecFile {
-    fn check_instruction(spec: &Spec, instruction: &Instruction) -> Result<bool> {
-        Ok(match spec.dst {
-            SpecOperand::Constant => match instruction.dst {
+    fn check_instruction(spec: &Spec, instruction: &Instruction) -> bool {
+        let check_operand = |spec_operand: &SpecOperand, operand: &Operand| match spec_operand {
+            SpecOperand::Constant => match operand {
                 Operand::Constant(_) => true,
                 Operand::Label(_) => true,
                 Operand::Relative(_) => true,
                 _ => false,
             },
-            SpecOperand::None => match instruction.dst {
+            SpecOperand::None => match operand {
                 Operand::None => true,
                 _ => false,
             },
-            SpecOperand::Memory => match instruction.dst {
-                Operand::Memory(_) => true,
-                _ => false,
-            },
-            SpecOperand::Register => match instruction.dst {
-                Operand::Register(_) => true,
-                _ => false,
-            },
-        } && match spec.src1 {
-            SpecOperand::Constant => match instruction.src1 {
-                Operand::Constant(_) => true,
+            SpecOperand::Memory => match operand {
                 Operand::Label(_) => true,
-                Operand::Relative(_) => true,
-                _ => false,
-            },
-            SpecOperand::None => match instruction.src1 {
-                Operand::None => true,
-                _ => false,
-            },
-            SpecOperand::Memory => match instruction.src1 {
                 Operand::Memory(_) => true,
                 _ => false,
             },
-            SpecOperand::Register => match instruction.src1 {
+            SpecOperand::Register => match operand {
                 Operand::Register(_) => true,
                 _ => false,
             },
-        } && match spec.src2 {
-            SpecOperand::Constant => match instruction.src2 {
-                Operand::Constant(_) => true,
-                Operand::Label(_) => true,
-                Operand::Relative(_) => true,
+            SpecOperand::PC => match operand {
+                Operand::PC => true,
                 _ => false,
             },
-            SpecOperand::None => match instruction.src2 {
-                Operand::None => true,
-                _ => false,
+            SpecOperand::Any => match operand {
+                Operand::None => false,
+                _ => true,
             },
-            SpecOperand::Memory => match instruction.src2 {
-                Operand::Memory(_) => true,
-                _ => false,
-            },
-            SpecOperand::Register => match instruction.src2 {
-                Operand::Register(_) => true,
-                _ => false,
-            },
-        })
+        };
+
+        spec.opcode == instruction.opcode
+            && check_operand(&spec.dst, &instruction.dst)
+            && check_operand(&spec.src1, &instruction.src1)
+            && check_operand(&spec.src2, &instruction.src2)
     }
 
     fn parse_line(&self, line: &Line, layer: usize) -> Result<String> {
         Ok(match line {
             Line::Instruction(instruction) => {
-                let mut template: Option<String> = None;
+                let mut template = None;
 
                 let specs = &self.all;
-                for spec in specs
-                    .into_iter()
-                    .filter(|spec| spec.opcode == instruction.opcode)
-                {
-                    if Self::check_instruction(spec, &instruction)? {
+                for spec in specs {
+                    if Self::check_instruction(spec, &instruction) {
                         template = Some(spec.translation.clone().trim().to_string());
                         break;
                     }
@@ -319,32 +301,44 @@ impl SpecFile {
             _ => line.to_string()?,
         })
     }
+
+    fn check_core(&self, line: &Line) -> bool {
+        match line {
+            Line::Instruction(instruction) => {
+                let specs = &self.core;
+                specs.into_iter().fold(false, |prev, spec| {
+                    prev || Self::check_instruction(spec, &instruction)
+                })
+            }
+            _ => true,
+        }
+    }
 }
 
-fn compile_parse(s: String) -> Result<Vec<Line>> {
+fn transpile_parse(s: String) -> Result<Vec<Line>> {
     s.lines().map(|line| Line::parse(line.trim())).collect()
 }
 
-fn compile_debug(s: String) -> Result<String> {
-    let lines = compile_parse(s)?;
+fn transpile_debug(s: String) -> Result<String> {
+    let lines = transpile_parse(s)?;
     Ok(lines
         .into_iter()
         .fold(String::new(), |buf, line| format!("{}{:?}\n", buf, line)))
 }
 
-fn compile(s: String) -> Result<String> {
+fn transpile(s: String) -> Result<String> {
     let spec = toml::from_str::<SpecFile>(include_str!("../spec.toml"))?;
-    let mut lines: Vec<(Line, usize)> = compile_parse(s)?
+    let mut lines: Vec<(Line, usize)> = transpile_parse(s)?
         .into_iter()
         .map(|line| (line, 0))
         .collect();
 
-    for _ in 0x0..=0xFF {
+    for _ in 0x0..=MAX_REG / 3 {
         let mut parsed = Vec::new();
 
         for (line, layer) in &lines {
             parsed.append(
-                &mut compile_parse(spec.parse_line(line, *layer)?)?
+                &mut transpile_parse(spec.parse_line(line, *layer)?)?
                     .into_iter()
                     .map(|line| (line, layer + 3))
                     .collect(),
@@ -352,6 +346,13 @@ fn compile(s: String) -> Result<String> {
         }
 
         lines = parsed;
+    }
+
+    if !(&lines)
+        .into_iter()
+        .fold(true, |prev, (line, _)| prev && spec.check_core(line))
+    {
+        println!("WARNING: Transpiled contains non-core instructions")
     }
 
     Ok(lines
@@ -389,8 +390,8 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     match args.command {
-        Commands::Compile { source, out } => result_helper(compile, source, out),
-        Commands::Debug { source, out } => result_helper(compile_debug, source, out),
+        Commands::Transpile { source, out } => result_helper(transpile, source, out),
+        Commands::Debug { source, out } => result_helper(transpile_debug, source, out),
     }?;
 
     Ok(())

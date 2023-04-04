@@ -1,13 +1,55 @@
-[[all]]
+[[core]]
 opcode = "add"
 dst = "Register"
-src1 = "Constant"
+src1 = "Register"
 src2 = "Register"
-translation = '''
-imm {1} {b}
-add {a} {1} {c}
-'''
+translation = ""
 
+[[core]]
+opcode = "rsh"
+dst = "Register"
+src1 = "Register"
+src2 = "None"
+translation = ""
+
+[[core]]
+opcode = "lod"
+dst = "Register"
+src1 = "Register"
+src2 = "None"
+translation = ""
+
+[[core]]
+opcode = "str"
+dst = "Register"
+src1 = "Register"
+src2 = "None"
+translation = ""
+
+[[core]]
+opcode = "bge"
+dst = "Register"
+src1 = "Register"
+src2 = "Register"
+translation = ""
+
+[[core]]
+opcode = "nor"
+dst = "Register"
+src1 = "Register"
+src2 = "Register"
+translation = ""
+
+[[core]]
+opcode = "imm"
+dst = "Register"
+src1 = "Constant"
+src2 = "None"
+translation = ""
+
+## Basic Instructions
+
+# ADD
 [[all]]
 opcode = "add"
 dst = "Register"
@@ -22,20 +64,116 @@ add {a} {b} {1}
 opcode = "add"
 dst = "Register"
 src1 = "Constant"
-src2 = "Constant"
+src2 = "Register"
+translation = '''
+imm {1} {b}
+add {a} {1} {c}
+'''
+
+[[all]]
+opcode = "add"
+dst = "Register"
+src1 = "Constant"
+src2 = "Register"
 translation = '''
 imm {1} {b}
 imm {2} {c}
 add {a} {1} {2}
 '''
 
+# RSH
 [[all]]
-opcode = "jmp"
-dst = "Constant"
-src1 = "None"
+opcode = "rsh"
+dst = "Register"
+src1 = "Constant"
 src2 = "None"
 translation = '''
-bge {a} R0 R0
+imm {1} {b}
+rsh {a} {1}
+'''
+
+# LOD
+[[all]]
+opcode = "lod"
+dst = "Register"
+src1 = "Constant"
+src2 = "None"
+translation = '''
+imm {1} {b}
+lod {a} {1}
+'''
+
+[[all]]
+opcode = "lod"
+dst = "PC"
+src1 = "Register"
+src2 = "None"
+translation = '''
+lod {1} {b}
+jmp {1}
+'''
+
+[[all]]
+opcode = "lod"
+dst = "PC"
+src1 = "Constant"
+src2 = "None"
+translation = '''
+lod {1} {b}
+jmp {1}
+'''
+
+# STR
+[[all]]
+opcode = "str"
+dst = "Register"
+src1 = "Constant"
+src2 = "None"
+translation = '''
+imm {1} {a}
+str {1} {b}
+'''
+
+[[all]]
+opcode = "str"
+dst = "Constant"
+src1 = "Register"
+src2 = "None"
+translation = '''
+imm {1} {b}
+str {a} {1}
+'''
+
+[[all]]
+opcode = "str"
+dst = "Constant"
+src1 = "Constant"
+src2 = "None"
+translation = '''
+imm {1} {a}
+imm {2} {b}
+str {1} {2}
+'''
+
+# BGE
+[[all]]
+opcode = "bge"
+dst = "Register"
+src1 = "Register"
+src2 = "Constant"
+translation = '''
+imm {1} {c}
+bge {a} {b} {1}
+'''
+
+[[all]]
+opcode = "bge"
+dst = "Register"
+src1 = "Constant"
+src2 = "Register"
+translation = '''
+imm {1} {b}
+bge {a} {1} {c}
 '''
 
 [[all]]
@@ -46,4 +184,140 @@ src2 = "Register"
 translation = '''
 imm {1} {a}
 bge {1} {b} {c}
+'''
+
+[[all]]
+opcode = "bge"
+dst = "Constant"
+src1 = "Register"
+src2 = "Constant"
+translation = '''
+imm {1} {a}
+imm {2} {c}
+bge {1} {b} {2}
+'''
+
+[[all]]
+opcode = "bge"
+dst = "Constant"
+src1 = "Constant"
+src2 = "Register"
+translation = '''
+imm {1} {a}
+imm {2} {b}
+bge {1} {2} {c}
+'''
+
+# NOR
+[[all]]
+opcode = "nor"
+dst = "Register"
+src1 = "Register"
+src2 = "Constant"
+translation = '''
+imm {1} {c}
+nor {a} {b} {1}
+'''
+
+[[all]]
+opcode = "nor"
+dst = "Register"
+src1 = "Constant"
+src2 = "Register"
+translation = '''
+imm {1} {b}
+nor {a} {1} {c}
+'''
+
+# SUB
+[[all]]
+opcode = "sub"
+dst = "Register"
+src1 = "Register"
+src2 = "Register"
+translation = '''
+not {1} {c}
+add {a} {b} {1}
+inc {a} {a}
+'''
+
+[[all]]
+opcode = "sub"
+dst = "Register"
+src1 = "Register"
+src2 = "Constant"
+translation = '''
+imm {1} {c}
+sub {a} {b} {1}
+'''
+
+[[all]]
+opcode = "sub"
+dst = "Register"
+src1 = "Constant"
+src2 = "Register"
+translation = '''
+imm {1} {b}
+sub {a} {1} {c}
+'''
+
+[[all]]
+opcode = "sub"
+dst = "Register"
+src1 = "Constant"
+src2 = "Constant"
+translation = '''
+imm {1} {b}
+imm {2} {c}
+sub {a} {1} {2}
+'''
+
+# JMP
+[[all]]
+opcode = "jmp"
+dst = "Any"
+src1 = "None"
+src2 = "None"
+translation = '''
+bge {a} R0 R0
+'''
+
+# MOV
+[[all]]
+opcode = "mov"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+add {a} {b} R0
+'''
+
+# NOP
+[[all]]
+opcode = "nop"
+dst = "None"
+src1 = "None"
+src2 = "None"
+translation = '''
+mov R0 R0
+'''
+
+# IMM - FIXME: Will cause pain
+# [[all]]
+# opcode = "imm"
+# dst = "Any"
+# src1 = "Any"
+# src2 = "None"
+# translation = '''
+# add {a} {b} R0
+# '''
+
+# LSH
+[[all]]
+opcode = "lsh"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+add {a} {b} {b}
 '''
