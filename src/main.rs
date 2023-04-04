@@ -5,7 +5,9 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
-static MAX_REG: usize = 0xFF;
+static BITS: u32 = 8;
+static BASE: usize = 2;
+static MAX_REG: usize = BASE.pow(BITS) - 1;
 
 #[derive(Parser, Debug)]
 struct Args {
@@ -36,6 +38,7 @@ enum Operand {
     Register(usize),
     Memory(usize),
     PC, // TODO: Find better way to implement PC as dst
+    SP,
 
     // Static Values
     Constant(usize),
@@ -64,6 +67,10 @@ impl Operand {
                 'P' => match s.chars().nth(1).ok_or(anyhow!("Unknown if PC: {}", s))? {
                     'C' => Self::PC,
                     _ => Err(anyhow!("Prefix P not understood: {}", s))?,
+                },
+                'S' => match s.chars().nth(1).ok_or(anyhow!("Unknown if SP: {}", s))? {
+                    'P' => Self::SP,
+                    _ => Err(anyhow!("Prefix S not understood: {}", s))?,
                 },
                 '0' => match s.chars().nth(1) {
                     Some(c) => match c {
@@ -112,6 +119,7 @@ impl Operand {
             Self::Register(a) => format!("R{}", a),
             Self::Relative(a) => format!("~{}{}", if a > &0 { '+' } else { '-' }, a.abs()),
             Self::PC => "PC".to_string(),
+            Self::SP => "SP".to_string(),
             Self::None => String::new(),
         })
     }
@@ -127,13 +135,17 @@ struct Instruction {
 
 impl Instruction {
     fn parse(s: &str) -> Result<Self> {
-        let (opcode, operands) = s
-            .split_once(" ")
-            .ok_or(anyhow!("Unable to seperate opcode from operands: {}", s))?;
+        let (opcode, operands) = match s.split_once(" ") {
+            Some((opcode, operands)) => (opcode, Some(operands)),
+            None => (s, None),
+        };
 
-        let (dst, srcs) = match operands.split_once(" ") {
-            Some((dst, srcs)) => (dst, Some(srcs)),
-            None => (operands, None),
+        let (dst, srcs) = match operands {
+            Some(operands) => match operands.split_once(" ") {
+                Some((dst, srcs)) => (Some(dst), Some(srcs)),
+                None => (Some(operands), None),
+            },
+            None => (None, None),
         };
 
         let (src1, src2) = match srcs {
@@ -146,7 +158,10 @@ impl Instruction {
 
         Ok(Self {
             opcode: String::from(opcode).to_lowercase(),
-            dst: Operand::parse(dst)?,
+            dst: match dst {
+                Some(operand) => Operand::parse(operand)?,
+                None => Operand::None,
+            },
             src1: match src1 {
                 Some(operand) => Operand::parse(operand)?,
                 None => Operand::None,
@@ -253,6 +268,7 @@ impl SpecFile {
             },
             SpecOperand::Register => match operand {
                 Operand::Register(_) => true,
+                Operand::SP => true,
                 _ => false,
             },
             SpecOperand::PC => match operand {
@@ -286,14 +302,15 @@ impl SpecFile {
 
                 match template {
                     Some(s) => format!(
-                        "// BEGIN: {0}\n{1}\n// END: {0}",
+                        "// [{2}] BEGIN: {0}\n{1}\n// [{2}] END: {0}",
                         instruction.to_string()?,
                         s.replace("{a}", &instruction.dst.to_string()?)
                             .replace("{b}", &instruction.src1.to_string()?)
                             .replace("{c}", &instruction.src2.to_string()?)
                             .replace("{1}", &format!("R{}", MAX_REG - layer))
                             .replace("{2}", &format!("R{}", MAX_REG - layer - 1))
-                            .replace("{3}", &format!("R{}", MAX_REG - layer - 2)),
+                            .replace("{m}", &(1 << BITS >> 1).to_string()),
+                        layer / 2
                     ),
                     None => instruction.to_string()?,
                 }
@@ -340,7 +357,7 @@ fn transpile(s: String) -> Result<String> {
             parsed.append(
                 &mut transpile_parse(spec.parse_line(line, *layer)?)?
                     .into_iter()
-                    .map(|line| (line, layer + 3))
+                    .map(|line| (line, layer + 2))
                     .collect(),
             )
         }
@@ -348,10 +365,17 @@ fn transpile(s: String) -> Result<String> {
         lines = parsed;
     }
 
-    if !(&lines)
-        .into_iter()
-        .fold(true, |prev, (line, _)| prev && spec.check_core(line))
-    {
+    if !(&lines).into_iter().fold(true, |prev, (line, _)| {
+        prev && match spec.check_core(line) {
+            true => true,
+            false => {
+                // FIXME: This can crash
+                println!("{}", line.to_string().unwrap());
+
+                false
+            }
+        }
+    }) {
         println!("WARNING: Transpiled contains non-core instructions")
     }
 

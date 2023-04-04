@@ -130,8 +130,8 @@ dst = "Register"
 src1 = "Constant"
 src2 = "None"
 translation = '''
-imm {1} {a}
-str {1} {b}
+imm {1} {b}
+str {a} {1}
 '''
 
 [[all]]
@@ -140,8 +140,8 @@ dst = "Constant"
 src1 = "Register"
 src2 = "None"
 translation = '''
-imm {1} {b}
-str {a} {1}
+imm {1} {a}
+str {1} {b}
 '''
 
 [[all]]
@@ -302,7 +302,7 @@ translation = '''
 mov R0 R0
 '''
 
-# IMM - FIXME: Will cause pain
+# IMM - FIXME: This is pain
 # [[all]]
 # opcode = "imm"
 # dst = "Any"
@@ -410,4 +410,231 @@ translation = '''
 and {a} {b} {c}
 nor {1} {b} {c}
 nor {a} {a} {1}
+'''
+
+# NAND
+[[all]]
+opcode = "nand"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+not {1} {b}
+not {a} {c}
+nor {a} {a} {1}
+not {a} {a}
+'''
+
+# BRL
+[[all]]
+opcode = "brl"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+bge ~+2 {b} {c}
+jmp {a}
+'''
+
+# BRG
+[[all]]
+opcode = "brg"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+bge ~+2 {c} {b}
+jmp {a}
+'''
+
+# BRE
+[[all]]
+opcode = "bre"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+bge ~+2 {b} {c}
+jmp ~+4
+bge ~+2 {c} {b}
+jmp ~+2
+jmp {a}
+'''
+
+# BNE
+[[all]]
+opcode = "bne"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+bge ~+2 {b} {c}
+jmp ~+2
+bge ~+2 {c} {b}
+jmp {a}
+'''
+
+# BOD
+[[all]]
+opcode = "bod"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+add {1} {b} 1
+bge ~+2 {1} 1
+jmp ~+3
+jmp {a}
+'''
+
+# BEV
+[[all]]
+opcode = "bev"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+add {1} {b} 1
+bge ~+2 {1} 1
+jmp {a}
+'''
+
+# BLE
+[[all]]
+opcode = "ble"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+bge {a} {c} {b}
+'''
+
+# BRZ
+[[all]]
+opcode = "brz"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+bge ~+2 {b} 1
+jmp {a}
+'''
+
+# BNZ
+[[all]]
+opcode = "bnz"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+bge {a} {b} 1
+'''
+
+# BRN
+[[all]]
+opcode = "brn"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+bge {a} {b} {m}
+'''
+
+# BRP
+[[all]]
+opcode = "brp"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+bge ~+2 {b} {m}
+jmp {a}
+'''
+
+# PSH
+[[all]]
+opcode = "psh"
+dst = "Any"
+src1 = "None"
+src2 = "None"
+translation = '''
+dec SP SP
+str SP {a}
+'''
+
+# POP
+[[all]]
+opcode = "pop"
+dst = "Any"
+src1 = "None"
+src2 = "None"
+translation = '''
+lod {a} SP
+inc SP SP
+'''
+
+# CAL
+[[all]]
+opcode = "cal"
+dst = "Memory"
+src1 = "None"
+src2 = "None"
+translation = '''
+psh ~+2
+jmp {a}
+'''
+
+# RET
+[[all]]
+opcode = "ret"
+dst = "None"
+src1 = "None"
+src2 = "None"
+translation = '''
+pop {1}
+jmp {1}
+'''
+
+# HLT
+[[all]]
+opcode = "hlt"
+dst = "None"
+src1 = "None"
+src2 = "None"
+translation = '''
+jmp ~+0
+'''
+
+# CPY
+[[all]]
+opcode = "cpy"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+lod {1} {b}
+str {a} {1}
+'''
+
+# BRC
+[[all]]
+opcode = "brc"
+dst = "Any"
+src1 = "Any"
+src2 = "Any"
+translation = '''
+add {1} {b} {c}
+brl {a} {1} {b}
+brl {a} {1} {c}
+'''
+
+# BNC
+[[all]]
+opcode = "bnc"
+dst = "Any"
+src1 = "Any"
+src2 = "None"
+translation = '''
+lod {1} {b}
+str {a} {1}
 '''
